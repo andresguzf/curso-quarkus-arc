@@ -1,5 +1,32 @@
 # Resultados de evaluación de la skill (proyectos de prueba generados)
 .claude/skills/quarkus-best-practices-workspace/
 
-# Editor
+# Build (Maven, Gradle, IDEs)
+target/
+out/
+build/
+bin/
+*.class
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+*.log
+
+# Variables de entorno (credenciales locales)
+.env
+.env.*
+!.env.example
+
+# IDEs y editores
 .vscode/
+.idea/
+*.iml
+*.iws
+*.ipr
+.settings/
+.project
+.classpath
+.factorypath
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
