@@ -4,22 +4,21 @@ import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @ApplicationScoped
 public class Invoice {
 
     private Customer customer;
 
-    // Valor desde application.properties
     @ConfigProperty(name = "invoice.description", defaultValue = "Invoice copras de supermercado ...")
     String description;
 
-    @ConfigProperty(name = "invoice.amount", defaultValue = "0")
-    BigDecimal amount;
+    private List<Item> items;
 
-    // Inyección por constructor; con un único constructor no hace falta @Inject
-    public Invoice(Customer customer) {
+    public Invoice(Customer customer, List<Item> items) {
         this.customer = customer;
+        this.items = items;
     }
 
     public Customer getCustomer() {
@@ -38,16 +37,23 @@ public class Invoice {
         this.description = description;
     }
 
+    // Total calculado: suma de precio * cantidad de cada item
     public BigDecimal getAmount() {
-        return amount;
+        return items.stream()
+                .map(item -> item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    public void setAmount(BigDecimal amount) {
-        this.amount = amount;
+    public List<Item> getItems() {
+        return items;
+    }
+
+    public void setItems(List<Item> items) {
+        this.items = items;
     }
 
     @Override
     public String toString() {
-        return "Invoice{customer=" + customer + ", description='" + description + "', amount=" + amount + "}";
+        return super.toString().concat(": Invoice{customer=" + customer + ", description='" + description + "', amount=" + getAmount() + ", items=" + items + "}");
     }
 }

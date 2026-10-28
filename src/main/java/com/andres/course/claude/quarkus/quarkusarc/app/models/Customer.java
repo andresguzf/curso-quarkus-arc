@@ -6,7 +6,6 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 @ApplicationScoped
 public class Customer {
 
-    // Valores desde application.properties
     @ConfigProperty(name = "customer.name", defaultValue = "John")
     String name;
 
