@@ -30,3 +30,30 @@ bin/
 # Sistema operativo
 .DS_Store
 Thumbs.db
+
+# Quarkus (code.quarkus.io)
+#Maven
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+release.properties
+.flattened-pom.xml
+# Eclipse
+# IntelliJ
+.idea
+# NetBeans
+nb-configuration.xml
+# Visual Studio Code
+.vscode
+# OSX
+# Vim
+*.swp
+*.swo
+# patch
+*.orig
+*.rej
+# Local environment
+# Plugin directory
+/.quarkus/cli/plugins/
+# TLS Certificates
+.certs/
