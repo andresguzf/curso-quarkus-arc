@@ -1,12 +1,17 @@
 package com.andres.course.claude.quarkus.quarkusarc.app.models;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 @ApplicationScoped
 public class Customer {
 
-    private String name = "Andrés";
-    private String lastname = "Guzmán";
+    // Valores desde application.properties
+    @ConfigProperty(name = "customer.name", defaultValue = "John")
+    String name;
+
+    @ConfigProperty(name = "customer.lastname", defaultValue = "Doe")
+    String lastname;
 
     public String getName() {
         return name;

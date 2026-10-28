@@ -1,6 +1,8 @@
 package com.andres.course.claude.quarkus.quarkusarc.app.controllers;
 
 import com.andres.course.claude.quarkus.quarkusarc.app.models.Invoice;
+
+import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
@@ -13,11 +15,8 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 @Tag(name = "Invoices")
 public class InvoiceController {
 
-    private final Invoice invoice;
-
-    public InvoiceController(Invoice invoice) {
-        this.invoice = invoice;
-    }
+    @Inject
+    private Invoice invoice;
 
     @GET
     @Operation(summary = "Devuelve la factura con su cliente inyectado")
