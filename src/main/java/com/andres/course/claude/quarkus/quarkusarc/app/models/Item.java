@@ -9,6 +9,10 @@ public class Item {
     private BigDecimal price;
     private Integer quantity;
 
+    // Constructor vacío requerido por Jackson para leer items.json
+    public Item() {
+    }
+
     public Item(String product, BigDecimal price, Integer quantity) {
         this.product = product;
         this.price = price;

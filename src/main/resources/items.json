@@ -1,0 +1,7 @@
+[
+  { "product": "Monitor 27 pulgadas", "price": 249.99, "quantity": 2 },
+  { "product": "Silla ergonómica", "price": 189.90, "quantity": 1 },
+  { "product": "Webcam Full HD", "price": 59.90, "quantity": 3 },
+  { "product": "Audífonos con micrófono", "price": 45.50, "quantity": 4 },
+  { "product": "Disco SSD 1TB", "price": 99.00, "quantity": 1 }
+]

@@ -3,6 +3,9 @@ package com.andres.course.claude.quarkus.quarkusarc.app.models;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
+import com.andres.course.claude.quarkus.quarkusarc.app.config.ItemsFile;
+// import com.andres.course.claude.quarkus.quarkusarc.app.config.ItemsJson;
+
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -16,7 +19,7 @@ public class Invoice {
 
     private List<Item> items;
 
-    public Invoice(Customer customer, List<Item> items) {
+    public Invoice(Customer customer, @ItemsFile List<Item> items) {
         this.customer = customer;
         this.items = items;
     }
