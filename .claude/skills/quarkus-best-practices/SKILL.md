@@ -114,6 +114,11 @@ capas es lo que hace que el proyecto deje de ser mantenible):
 - **models/dto** — `record`, un único DTO por recurso que sirve como request y response.
   Excluye password, `created_at`, `updated_at`, `create_at`, `update_at` (y sus variantes
   camelCase) y cualquier dato sensible. Las anotaciones de Bean Validation van en el record.
+  Mantén esta regla aunque el entity tenga un campo sensible que la API debería recibir
+  (por ejemplo `password` en un usuario o cliente): no crees un DTO de entrada aparte. En su
+  lugar, deja la columna nullable para que el alta funcione y avisa al usuario de forma
+  explícita en el resumen final que ese campo no se puede enviar por la API con el DTO actual,
+  para que decida cómo manejarlo.
 - **mappers** — clase `@ApplicationScoped` `XxxMapper` con `toDto(entity)` (entity → dto),
   `toEntity(dto)` (dto → entity) y `updateEntity(entity, dto)`. Conversión explícita, sin
   MapStruct ni reflexión, para que se vea qué campos viajan.
@@ -136,4 +141,5 @@ y la Dev UI en `http://localhost:8080/q/dev-ui`. Swagger UI queda en
 ## Al terminar
 
 Resume al usuario qué archivos creaste o cambiaste, la versión de Quarkus usada y cómo
-probar los endpoints (Swagger UI o `curl`).
+probar los endpoints (Swagger UI o `curl`). Si algún campo sensible quedó fuera del DTO y la
+API no puede recibirlo, inclúyelo como aviso en el resumen.

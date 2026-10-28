@@ -1,0 +1,74 @@
+{
+  "skill_name": "quarkus-best-practices",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Crea una API básica con Quarkus para gestionar productos: cada producto tiene nombre, descripción y precio. Necesito los endpoints CRUD.",
+      "expected_output": "Proyecto Quarkus nuevo generado desde code.quarkus.io con las convenciones de la skill, capas completas para Product y SIN dependencias de persistencia (no se pidieron).",
+      "files": [],
+      "assertions": [
+        "groupId es com.andres.course.claude.quarkus",
+        "artifactId igual al nombre del directorio",
+        "Quarkus >= 3.40.1",
+        "Java 25 (maven.compiler.release)",
+        "packaging jar",
+        "Maven Wrapper presente (mvnw, mvnw.cmd, .mvn)",
+        "Configuración en application.properties (sin YAML)",
+        "Extensiones base explícitas en pom",
+        "Package base con controllers/services/repositories/models",
+        "Sin persistencia (no se pidió)",
+        "Repository existe como interface + implementación",
+        "DTO definido como record",
+        "Un solo DTO para request y response",
+        "Mapper con toDto y toEntity",
+        "Controller valida con @Valid, no usa repository ni entidades",
+        "Service usa el mapper",
+        "Compila con ./mvnw package -DskipTests"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Necesito un proyecto Quarkus nuevo para una API de clientes con Panache y Postgres. El cliente tiene nombre, email, password, created_at y updated_at.",
+      "expected_output": "Proyecto nuevo con persistencia Panache + PostgreSQL agregada, entity Cliente con todos los campos y DTO record que excluye password, created_at y updated_at.",
+      "files": [],
+      "assertions": [
+        "groupId es com.andres.course.claude.quarkus",
+        "artifactId igual al nombre del directorio",
+        "Quarkus >= 3.40.1",
+        "Java 25 (maven.compiler.release)",
+        "packaging jar",
+        "Maven Wrapper presente (mvnw, mvnw.cmd, .mvn)",
+        "Configuración en application.properties (sin YAML)",
+        "Extensiones base explícitas en pom",
+        "Package base con controllers/services/repositories/models",
+        "Persistencia Panache + PostgreSQL presente",
+        "DTO excluye password, created_at y updated_at",
+        "Repository interface extends PanacheRepository + impl @ApplicationScoped",
+        "DTO definido como record",
+        "Un solo DTO para request y response",
+        "Mapper con toDto y toEntity",
+        "Controller valida con @Valid, no usa repository ni entidades",
+        "Service usa el mapper",
+        "Compila con ./mvnw package -DskipTests"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "En mi proyecto Quarkus agrega un entity Pedido (cliente como texto, total y estado) con su repository, service y controller.",
+      "expected_output": "Sobre un proyecto existente con persistencia, agrega Pedido en todas las capas: entity, interface repository + impl, DTO record, mapper, service y controller, y compila.",
+      "files": [
+        "inputs/ventas-api"
+      ],
+      "assertions": [
+        "Persistencia Panache + PostgreSQL presente",
+        "Repository interface extends PanacheRepository + impl @ApplicationScoped",
+        "DTO definido como record",
+        "Un solo DTO para request y response",
+        "Mapper con toDto y toEntity",
+        "Controller valida con @Valid, no usa repository ni entidades",
+        "Service usa el mapper",
+        "Compila con ./mvnw package -DskipTests"
+      ]
+    }
+  ]
+}

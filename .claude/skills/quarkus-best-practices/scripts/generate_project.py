@@ -104,6 +104,17 @@ def download(artifact_id, stream_key):
     return http_get(url)
 
 
+def merge_gitignore(dest, generated):
+    """Agrega al .gitignore existente las reglas de Quarkus que le falten (target/, etc.)."""
+    current = open(dest, encoding="utf-8").read()
+    existing = {l.strip() for l in current.splitlines()}
+    missing = [l for l in generated.splitlines() if l.strip() and l.strip() not in existing]
+    if missing:
+        with open(dest, "a", encoding="utf-8") as f:
+            f.write(("" if current.endswith("\n") else "\n") + "\n# Quarkus (code.quarkus.io)\n" + "\n".join(missing) + "\n")
+    print(f"  - .gitignore existente: se agregaron {len(missing)} reglas de Quarkus")
+
+
 def extract(zip_bytes, artifact_id, target):
     prefix = f"{artifact_id}/"
     with zipfile.ZipFile(io.BytesIO(zip_bytes)) as z:
@@ -113,7 +124,10 @@ def extract(zip_bytes, artifact_id, target):
             rel = info.filename[len(prefix):]
             dest = os.path.join(target, rel)
             if os.path.exists(dest):
-                print(f"  - se mantiene existente: {rel}")
+                if rel == ".gitignore":
+                    merge_gitignore(dest, z.read(info).decode("utf-8"))
+                else:
+                    print(f"  - se mantiene existente: {rel}")
                 continue
             os.makedirs(os.path.dirname(dest), exist_ok=True)
             with z.open(info) as src, open(dest, "wb") as out:
