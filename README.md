@@ -20,6 +20,7 @@ el proyecto (ver [más abajo](#skill-quarkus-best-practices)).
 | Scopes y client proxies (`@ApplicationScoped`, `@SessionScoped`, `@Singleton`) | `Invoice`, `Customer`, `InvoiceController` |
 | Ciclo de vida con `@PostConstruct` y `@PreDestroy` | `Invoice`, `InvoiceController` |
 | Invalidar la sesión HTTP para destruir un bean `@SessionScoped` | `LogoutController` |
+| Filtro HTTP global de Quarkus REST (pre y post) que mide el tiempo de cada petición | `RequestTimeFilter` |
 
 Dos detalles para observar en el log:
 
@@ -56,7 +57,8 @@ Dos detalles para observar en el log:
 src/main/java/com/andres/course/claude/quarkus/quarkusarc/app/
 ├── controllers/   # InvoiceController, LogoutController, HealthController
 ├── models/        # Invoice, Customer, Item (beans CDI)
-└── config/        # ItemsProducer, InvoiceItemsConfig y los qualifiers ItemsJson / ItemsFile
+├── config/        # ItemsProducer, InvoiceItemsConfig y los qualifiers ItemsJson / ItemsFile
+└── filters/       # RequestTimeFilter (tiempo de cada petición en el log)
 src/main/resources/
 ├── application.properties   # Datos del cliente, la factura y sus ítems
 ├── items.json

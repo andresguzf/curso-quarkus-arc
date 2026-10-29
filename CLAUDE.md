@@ -35,6 +35,7 @@ Package base: `com.andres.course.claude.quarkus.quarkusarc.app`.
   - `Customer` (`@ApplicationScoped`).
   - `Item`.
 - `config/`: `ItemsProducer`, `InvoiceItemsConfig` y los qualifiers `ItemsJson` e `ItemsFile`.
+- `filters/`: `RequestTimeFilter`, filtro global de Quarkus REST con `@ServerRequestFilter(preMatching = true)` (pre: guarda el inicio) y `@ServerResponseFilter` (post: escribe en el log el método, la ruta, el status y los ms).
 - `src/main/resources/`: `application.properties` (datos de cliente, factura e ítems), `items.json` e `items.csv`.
 
 ## Rutas
