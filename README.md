@@ -37,6 +37,7 @@ Dos detalles para observar en el log:
 | GET | `/api/invoices` | Devuelve la factura con su cliente, ítems y monto total |
 | POST | `/api/logout` | Invalida la sesión HTTP; con `Invoice` en `@SessionScoped` dispara su `@PreDestroy` |
 | GET | `/api/health` | Estado de la aplicación |
+| * | cualquier otra ruta | 404 con JSON (`NotFoundController`) |
 | GET | `/q/swagger-ui` | Swagger UI |
 | GET | `/q/openapi` | Especificación OpenAPI |
 | GET | `/q/dev-ui` | Dev UI (solo en dev mode) |
@@ -55,7 +56,7 @@ Dos detalles para observar en el log:
 
 ```
 src/main/java/com/andres/course/claude/quarkus/quarkusarc/app/
-├── controllers/   # InvoiceController, LogoutController, HealthController
+├── controllers/   # InvoiceController, LogoutController, HealthController, NotFoundController
 ├── models/        # Invoice, Customer, Item (beans CDI)
 ├── config/        # ItemsProducer, InvoiceItemsConfig y los qualifiers ItemsJson / ItemsFile
 └── filters/       # RequestTimeFilter (tiempo de cada petición en el log y en el JSON)

@@ -29,7 +29,8 @@ Es un proyecto didáctico, así que no sigue la arquitectura completa de la skil
 
 Package base: `com.andres.course.claude.quarkus.quarkusarc.app`.
 
-- `controllers/`: `InvoiceController`, `LogoutController`, `HealthController`.
+- `controllers/`: `InvoiceController`, `LogoutController`, `HealthController` y `NotFoundController`.
+  - `NotFoundController` (`@Path("/{path: .*}")`) responde 404 a las rutas sin endpoint. Es necesario porque con `quarkus-rest-servlet` una ruta que no coincide con ningún `@Path` termina en un `NullPointerException` interno (500). No lo quites mientras se use `quarkus-rest-servlet`.
 - `models/`:
   - `Invoice` (`@ApplicationScoped`; se puede cambiar a `@SessionScoped` para el ejemplo de sesión).
   - `Customer` (`@ApplicationScoped`).
@@ -45,6 +46,7 @@ Package base: `com.andres.course.claude.quarkus.quarkusarc.app`.
 | GET | `/api/invoices` | Devuelve la factura con su cliente e ítems (los inyectados con `@ItemsFile`) |
 | POST | `/api/logout` | Invalida la sesión HTTP; con `Invoice` en `@SessionScoped` dispara su `@PreDestroy` |
 | GET | `/api/health` | Estado de la aplicación |
+| * | cualquier otra ruta | 404 con JSON (`NotFoundController`) |
 | GET | `/q/swagger-ui` | Swagger UI |
 | GET | `/q/openapi` | Documento OpenAPI |
 | GET | `/q/dev-ui` | Dev UI (solo en dev mode) |
@@ -52,7 +54,7 @@ Package base: `com.andres.course.claude.quarkus.quarkusarc.app`.
 ## Ejecutar y probar
 
 - Dev mode: `./mvnw quarkus:dev`, en `http://localhost:8080`.
-- Tests: `./mvnw test` (`InvoiceControllerTest`). `InvoiceControllerIT` repite esos tests contra el jar.
+- Tests: `./mvnw test` (`InvoiceControllerTest`, incluye el 404 de una ruta inexistente). `InvoiceControllerIT` repite esos tests contra el jar.
 - Si cambias el scope de `Invoice`, ajusta `InvoiceControllerTest`: los tests de sesión dependen de la cookie `JSESSIONID`.
 
 ## Available skills

@@ -39,6 +39,18 @@ class InvoiceControllerTest {
     }
 
     @Test
+    void rutaInexistenteDevuelve404() {
+        // Sin NotFoundController, quarkus-rest-servlet responde 500 a una ruta que no coincide con ningún @Path
+        given()
+                .when().get("/api/no-existe")
+                .then()
+                .statusCode(404)
+                .contentType(ContentType.JSON)
+                .body("path", equalTo("/api/no-existe"))
+                .body("elapsedTime", endsWith(" ms"));
+    }
+
+    @Test
     void showReutilizaLaMismaInstanciaApplicationScoped() {
         String first = given().when().get("/api/invoices").then().statusCode(200).extract().path("createdAt");
         String second = given().when().get("/api/invoices").then().statusCode(200).extract().path("createdAt");
