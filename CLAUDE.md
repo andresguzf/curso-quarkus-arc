@@ -39,7 +39,7 @@ Package base: `com.andres.course.claude.quarkus.quarkusarc.app`.
 - `filters/`: `RequestTimeFilter` y la anotación `SkipRequestTime`.
   - `RequestTimeFilter` es un filtro global de Quarkus REST. `@ServerRequestFilter` (pre) guarda el inicio y `@ServerResponseFilter` (post) escribe en el log el método, la ruta, el status y los ms, y agrega `elapsedTime` al JSON de respuesta convirtiendo la entidad a `ObjectNode` con el `ObjectMapper` (solo si la respuesta es un objeto JSON).
   - El filtro de request no es `preMatching`: necesita `ResourceInfo` para saber si el endpoint tiene `@SkipRequestTime`. Por eso no mide las peticiones que no llegan a ningún método (por ejemplo, un 405).
-  - `@SkipRequestTime` (en método o clase) excluye un endpoint del filtro; hoy lo usa `GreetingController.date()`.
+  - `@SkipRequestTime` (en método o clase) excluye un endpoint del filtro; hoy lo usan `GreetingController.date()` y `HealthController.health()`.
 - `src/main/resources/`: `application.properties` (datos de cliente, factura e ítems), `items.json` e `items.csv`.
 
 ## Rutas
@@ -48,7 +48,7 @@ Package base: `com.andres.course.claude.quarkus.quarkusarc.app`.
 |---|---|---|
 | GET | `/api/invoices` | Devuelve la factura con su cliente e ítems (los inyectados con `@ItemsFile`) |
 | POST | `/api/logout` | Invalida la sesión HTTP; con `Invoice` en `@SessionScoped` dispara su `@PreDestroy` |
-| GET | `/api/health` | Estado de la aplicación |
+| GET | `/api/health` | Estado de la aplicación (excluido de `RequestTimeFilter`) |
 | GET | `/api/greetings/hello?name=...` | Saludo en JSON (`name` por defecto: `Mundo`) |
 | GET | `/api/greetings/date` | Fecha y hora actual del servidor en JSON (excluido de `RequestTimeFilter`) |
 | * | cualquier otra ruta | 404 con JSON (`NotFoundController`) |
