@@ -21,6 +21,7 @@ el proyecto (ver [más abajo](#skill-quarkus-best-practices)).
 | Ciclo de vida con `@PostConstruct` y `@PreDestroy` | `Invoice`, `InvoiceController` |
 | Invalidar la sesión HTTP para destruir un bean `@SessionScoped` | `LogoutController` |
 | Filtro HTTP global de Quarkus REST (pre y post) que mide el tiempo de cada petición y lo agrega al JSON como `elapsedTime` | `RequestTimeFilter` |
+| Excluir un endpoint del filtro con una anotación propia | `@SkipRequestTime` en `GreetingController.date()` |
 
 Dos detalles para observar en el log:
 
@@ -37,6 +38,8 @@ Dos detalles para observar en el log:
 | GET | `/api/invoices` | Devuelve la factura con su cliente, ítems y monto total |
 | POST | `/api/logout` | Invalida la sesión HTTP; con `Invoice` en `@SessionScoped` dispara su `@PreDestroy` |
 | GET | `/api/health` | Estado de la aplicación |
+| GET | `/api/greetings/hello?name=...` | Saludo en JSON (`name` por defecto: `Mundo`) |
+| GET | `/api/greetings/date` | Fecha y hora actual del servidor en JSON (excluido de `RequestTimeFilter`) |
 | * | cualquier otra ruta | 404 con JSON (`NotFoundController`) |
 | GET | `/q/swagger-ui` | Swagger UI |
 | GET | `/q/openapi` | Especificación OpenAPI |
@@ -56,10 +59,10 @@ Dos detalles para observar en el log:
 
 ```
 src/main/java/com/andres/course/claude/quarkus/quarkusarc/app/
-├── controllers/   # InvoiceController, LogoutController, HealthController, NotFoundController
+├── controllers/   # InvoiceController, LogoutController, HealthController, GreetingController, NotFoundController
 ├── models/        # Invoice, Customer, Item (beans CDI)
 ├── config/        # ItemsProducer, InvoiceItemsConfig y los qualifiers ItemsJson / ItemsFile
-└── filters/       # RequestTimeFilter (tiempo de cada petición en el log y en el JSON)
+└── filters/       # RequestTimeFilter (tiempo de cada petición en el log y en el JSON) y @SkipRequestTime
 src/main/resources/
 ├── application.properties   # Datos del cliente, la factura y sus ítems
 ├── items.json

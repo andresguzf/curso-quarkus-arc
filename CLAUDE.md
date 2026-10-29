@@ -29,14 +29,17 @@ Es un proyecto didáctico, así que no sigue la arquitectura completa de la skil
 
 Package base: `com.andres.course.claude.quarkus.quarkusarc.app`.
 
-- `controllers/`: `InvoiceController`, `LogoutController`, `HealthController` y `NotFoundController`.
+- `controllers/`: `InvoiceController`, `LogoutController`, `HealthController`, `GreetingController` y `NotFoundController`.
   - `NotFoundController` (`@Path("/{path: .*}")`) responde 404 a las rutas sin endpoint. Es necesario porque con `quarkus-rest-servlet` una ruta que no coincide con ningún `@Path` termina en un `NullPointerException` interno (500). No lo quites mientras se use `quarkus-rest-servlet`.
 - `models/`:
   - `Invoice` (`@ApplicationScoped`; se puede cambiar a `@SessionScoped` para el ejemplo de sesión).
   - `Customer` (`@ApplicationScoped`).
   - `Item`.
 - `config/`: `ItemsProducer`, `InvoiceItemsConfig` y los qualifiers `ItemsJson` e `ItemsFile`.
-- `filters/`: `RequestTimeFilter`, filtro global de Quarkus REST con `@ServerRequestFilter(preMatching = true)` (pre: guarda el inicio) y `@ServerResponseFilter` (post: escribe en el log el método, la ruta, el status y los ms, y agrega `elapsedTime` al JSON de respuesta convirtiendo la entidad a `ObjectNode` con el `ObjectMapper`; solo si la respuesta es un objeto JSON).
+- `filters/`: `RequestTimeFilter` y la anotación `SkipRequestTime`.
+  - `RequestTimeFilter` es un filtro global de Quarkus REST. `@ServerRequestFilter` (pre) guarda el inicio y `@ServerResponseFilter` (post) escribe en el log el método, la ruta, el status y los ms, y agrega `elapsedTime` al JSON de respuesta convirtiendo la entidad a `ObjectNode` con el `ObjectMapper` (solo si la respuesta es un objeto JSON).
+  - El filtro de request no es `preMatching`: necesita `ResourceInfo` para saber si el endpoint tiene `@SkipRequestTime`. Por eso no mide las peticiones que no llegan a ningún método (por ejemplo, un 405).
+  - `@SkipRequestTime` (en método o clase) excluye un endpoint del filtro; hoy lo usa `GreetingController.date()`.
 - `src/main/resources/`: `application.properties` (datos de cliente, factura e ítems), `items.json` e `items.csv`.
 
 ## Rutas
@@ -46,6 +49,8 @@ Package base: `com.andres.course.claude.quarkus.quarkusarc.app`.
 | GET | `/api/invoices` | Devuelve la factura con su cliente e ítems (los inyectados con `@ItemsFile`) |
 | POST | `/api/logout` | Invalida la sesión HTTP; con `Invoice` en `@SessionScoped` dispara su `@PreDestroy` |
 | GET | `/api/health` | Estado de la aplicación |
+| GET | `/api/greetings/hello?name=...` | Saludo en JSON (`name` por defecto: `Mundo`) |
+| GET | `/api/greetings/date` | Fecha y hora actual del servidor en JSON (excluido de `RequestTimeFilter`) |
 | * | cualquier otra ruta | 404 con JSON (`NotFoundController`) |
 | GET | `/q/swagger-ui` | Swagger UI |
 | GET | `/q/openapi` | Documento OpenAPI |
@@ -54,7 +59,7 @@ Package base: `com.andres.course.claude.quarkus.quarkusarc.app`.
 ## Ejecutar y probar
 
 - Dev mode: `./mvnw quarkus:dev`, en `http://localhost:8080`.
-- Tests: `./mvnw test` (`InvoiceControllerTest`, incluye el 404 de una ruta inexistente). `InvoiceControllerIT` repite esos tests contra el jar.
+- Tests: `./mvnw test` (`InvoiceControllerTest` y `GreetingControllerTest`; incluye el 404 de una ruta inexistente). `InvoiceControllerIT` repite esos tests contra el jar.
 - Si cambias el scope de `Invoice`, ajusta `InvoiceControllerTest`: los tests de sesión dependen de la cookie `JSESSIONID`.
 
 ## Available skills

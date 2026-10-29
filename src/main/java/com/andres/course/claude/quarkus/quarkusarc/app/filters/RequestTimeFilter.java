@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.quarkus.logging.Log;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerResponseContext;
+import jakarta.ws.rs.container.ResourceInfo;
 import jakarta.ws.rs.core.MediaType;
 import org.jboss.resteasy.reactive.server.ServerRequestFilter;
 import org.jboss.resteasy.reactive.server.ServerResponseFilter;
@@ -19,6 +20,7 @@ import org.jboss.resteasy.reactive.server.ServerResponseFilter;
  *   <li>Pre ({@link #before}): se ejecuta antes del endpoint y guarda la hora de inicio.</li>
  *   <li>Post ({@link #after}): se ejecuta después del endpoint y calcula el tiempo transcurrido.</li>
  * </ul>
+ * Los endpoints anotados con {@link SkipRequestTime} quedan fuera del filtro.
  */
 public class RequestTimeFilter {
 
@@ -31,9 +33,12 @@ public class RequestTimeFilter {
         this.mapper = mapper;
     }
 
-    // Pre: preMatching = true corre antes de buscar el endpoint, así también se mide un 404
-    @ServerRequestFilter(preMatching = true)
-    public void before(ContainerRequestContext request) {
+    // Pre: corre cuando Quarkus REST ya eligió el endpoint, así se puede revisar si tiene @SkipRequestTime
+    @ServerRequestFilter
+    public void before(ContainerRequestContext request, ResourceInfo resource) {
+        if (isSkipped(resource)) {
+            return;
+        }
         request.setProperty(START_TIME, System.nanoTime());
         Log.infof("Antes: %s %s", request.getMethod(), request.getUriInfo().getPath());
     }
@@ -41,7 +46,8 @@ public class RequestTimeFilter {
     // Post: corre cuando el endpoint ya generó la respuesta, antes de enviarla al cliente
     @ServerResponseFilter
     public void after(ContainerRequestContext request, ContainerResponseContext response) {
-        // Las propiedades viven lo que dura la petición; sirven para pasar el inicio al filtro de respuesta
+        // Las propiedades viven lo que dura la petición; sirven para pasar el inicio al filtro de respuesta.
+        // Si no está, el endpoint tiene @SkipRequestTime o la petición no llegó a ningún endpoint (405)
         if (!(request.getProperty(START_TIME) instanceof Long start)) {
             return;
         }
@@ -52,6 +58,12 @@ public class RequestTimeFilter {
                 response.getStatus(),
                 millis);
         addElapsedTime(response, millis);
+    }
+
+    // La anotación puede ir en el método o en la clase del controller
+    private boolean isSkipped(ResourceInfo resource) {
+        return resource.getResourceMethod().isAnnotationPresent(SkipRequestTime.class)
+                || resource.getResourceClass().isAnnotationPresent(SkipRequestTime.class);
     }
 
     /**

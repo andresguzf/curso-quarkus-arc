@@ -7,6 +7,8 @@ import jakarta.ws.rs.core.MediaType;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
+import com.andres.course.claude.quarkus.quarkusarc.app.filters.SkipRequestTime;
+
 import java.time.Instant;
 import java.util.Map;
 
@@ -16,6 +18,7 @@ import java.util.Map;
 public class HealthController {
 
     @GET
+    @SkipRequestTime
     @Operation(summary = "Indica si la aplicación está arriba")
     public Map<String, Object> health() {
         return Map.of("status", "UP", "timestamp", Instant.now().toString());
