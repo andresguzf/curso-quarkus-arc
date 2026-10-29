@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.emptyOrNullString;
+import static org.hamcrest.Matchers.endsWith;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.not;
@@ -32,7 +33,9 @@ class InvoiceControllerTest {
                 .body("items.size()", greaterThan(0))
                 .body("amount", greaterThan(0f))
                 // createdAt lo asigna @PostConstruct; si el callback no corriera, llegaría null
-                .body("createdAt", notNullValue());
+                .body("createdAt", notNullValue())
+                // Lo agrega RequestTimeFilter en el filtro de respuesta
+                .body("elapsedTime", endsWith(" ms"));
     }
 
     @Test
