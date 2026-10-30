@@ -14,7 +14,7 @@ Qué hace:
      existentes como CLAUDE.md o .claude/.
   4. Ajusta el pom.xml a <packaging>jar</packaging> y asegura quarkus-arc explícito.
   5. Escribe application.properties y crea los packages base
-     (controllers, services, repositories, models, models/dto, mappers).
+     (controllers, services, repositories, entities, models/dto, mappers).
 
 `add-persistence` agrega quarkus-hibernate-orm-panache y quarkus-jdbc-postgresql al pom
 (vía ./mvnw quarkus:add-extension) y anexa la configuración de datasource/Hibernate
@@ -44,7 +44,7 @@ EXTENSIONS = [
 ]
 # Solo bajo demanda (subcomando add-persistence).
 PERSISTENCE_EXTENSIONS = ["io.quarkus:quarkus-hibernate-orm-panache", "io.quarkus:quarkus-jdbc-postgresql"]
-BASE_PACKAGES = ["controllers", "services", "repositories", "models", "models/dto", "mappers"]
+BASE_PACKAGES = ["controllers", "services", "repositories", "entities", "models/dto", "mappers"]
 
 
 def http_get(url):

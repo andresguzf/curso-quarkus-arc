@@ -1,6 +1,6 @@
 ---
 name: quarkus-best-practices
-description: Genera y mantiene proyectos Quarkus (Java 25, Maven, Quarkus LTS >= 3.40.1) con arquitectura en capas controllers / services / repositories / models, DTO como records y Mapper explícito. Usa esta skill siempre que el usuario pida crear una API básica, un microservicio o un proyecto con Quarkus, y también cuando pida crear, agregar o modificar un entity, model, DTO, mapper, repository, service, controller o endpoint REST en un proyecto Quarkus, o agregar persistencia a uno (por ejemplo "quiero agregar Panache con Postgres", "conecta la API a PostgreSQL"), aunque no mencione la skill por nombre.
+description: Genera y mantiene proyectos Quarkus (Java 25, Maven, Quarkus LTS >= 3.40.1) con arquitectura en capas controllers / services / repositories / entities, DTO como records y Mapper explícito. Usa esta skill siempre que el usuario pida crear una API básica, un microservicio o un proyecto con Quarkus, y también cuando pida crear, agregar o modificar un entity, model, DTO, mapper, repository, service, controller o endpoint REST en un proyecto Quarkus, o agregar persistencia a uno (por ejemplo "quiero agregar Panache con Postgres", "conecta la API a PostgreSQL"), aunque no mencione la skill por nombre.
 ---
 
 # Quarkus best practices
@@ -61,8 +61,9 @@ Estructura resultante:
 src/main/java/com/andres/course/claude/quarkus/{segmento}/app/
 ├── controllers/     # endpoints REST
 ├── services/        # lógica de negocio
-├── repositories/    # acceso a datos
-├── models/          # entidades
+├── repositories/    # acceso a datos (Panache)
+├── entities/        # entidades JPA
+├── models/
 │   └── dto/         # records request/response
 └── mappers/         # conversión entity <-> dto
 ```
@@ -92,7 +93,7 @@ si quiere agregar Panache + PostgreSQL o trabajar con un repositorio en memoria
 ## Flujo 3: crear o modificar capas
 
 Lee `references/layer-templates.md` antes de escribir código: tiene la plantilla completa
-de cada capa. Para un recurso nuevo crea, en este orden: model → repository → DTO → mapper
+de cada capa. Para un recurso nuevo crea, en este orden: entity → repository → DTO → mapper
 → service → controller. Al modificar un campo, propaga el cambio por todas las capas
 afectadas (entity, DTO, mapper y validaciones).
 
@@ -102,15 +103,22 @@ capas es lo que hace que el proyecto deje de ser mantenible):
 - **controllers** — solo exponen endpoints REST (`@Path`, JAX-RS de Quarkus REST). Validan la
   entrada con `@Valid`, delegan al service y devuelven DTO. Nunca acceden a repositorios ni
   devuelven entidades.
-- **services** — `@ApplicationScoped`. Contienen la lógica de negocio, orquestan repositorios,
-  definen `@Transactional` en las escrituras y convierten entre entidades y DTO usando el mapper.
-- **repositories** — interfaces que extienden `PanacheRepository<Entidad>`, con consultas
-  personalizadas como métodos `default`. Cada interface va acompañada de una clase
-  `@ApplicationScoped` vacía `XxxRepositoryImpl implements XxxRepository`: Panache clásico no
-  implementa interfaces por sí solo y, sin esa clase, el build falla con
-  `UnsatisfiedResolutionException`. El service inyecta la interface.
-- **models** — entidades JPA (`@Entity`) con campos privados, getters/setters e `id` `Long`
-  autogenerado. No extienden `PanacheEntity`; el acceso a datos va por el repositorio.
+- **services** — interface `XxxService` con las operaciones (solo DTO en las firmas) más una
+  clase `@ApplicationScoped` `XxxServiceImpl implements XxxService` con la lógica de negocio:
+  orquesta repositorios, define `@Transactional` en las escrituras y convierte entre entidades
+  y DTO usando el mapper. Controllers y tests inyectan siempre la interface, nunca la `Impl`.
+  (A diferencia del repositorio, aquí la interface sí aporta: es el contrato de negocio y
+  desacopla al controller de la implementación concreta.)
+- **repositories** — una sola clase `@ApplicationScoped` `XxxRepository implements
+  PanacheRepository<Entidad>`, con las consultas personalizadas como métodos públicos. Sin
+  interface aparte ni clase `XxxRepositoryImpl`: los métodos de Panache (`persist`, `findById`,
+  `list`, `find`…) ya vienen como `default` y Quarkus los completa en build; la clase solo
+  existe para declarar el scope CDI, porque un bean tiene que ser una clase con anotación de
+  scope. El service inyecta la clase.
+- **entities** — entidades JPA (`@Entity`) con campos privados, getters/setters e `id` `Long`
+  autogenerado. No extienden `PanacheEntity`; el acceso a datos va por el repositorio. Las
+  fechas de auditoría (`createdAt`, `updatedAt`) se llenan con `@PrePersist`/`@PreUpdate` y
+  solo tienen getter.
 - **models/dto** — `record`, un único DTO por recurso que sirve como request y response.
   Excluye password, `created_at`, `updated_at`, `create_at`, `update_at` (y sus variantes
   camelCase) y cualquier dato sensible. Las anotaciones de Bean Validation van en el record.

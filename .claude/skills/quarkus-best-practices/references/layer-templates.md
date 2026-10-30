@@ -4,24 +4,24 @@ Ejemplo con la entidad `Product`. Reemplaza `{base}` por el package base
 (`com.andres.course.claude.quarkus.{segmento}.app`) y adapta nombres y campos al dominio pedido.
 
 Contenido:
-1. Model (entity JPA) — requiere persistencia
-2. Repository (interface + implementación) — requiere persistencia
+1. Entity (JPA) — requiere persistencia
+2. Repository (clase Panache) — requiere persistencia
 3. DTO (record)
 4. Mapper
-5. Service
+5. Service (interface + implementación)
 6. Controller
 7. Manejo de errores
 8. Variante sin persistencia
 
 ---
 
-## 1. Model — `models/Product.java`
+## 1. Entity — `entities/Product.java`
 
 Entidad JPA simple con campos privados y getters/setters. No extiende `PanacheEntity`:
 el acceso a datos va siempre por el repositorio.
 
 ```java
-package {base}.models;
+package {base}.entities;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -72,42 +72,34 @@ public class Product {
 }
 ```
 
-## 2. Repository — `repositories/ProductRepository.java` + `ProductRepositoryImpl.java`
+## 2. Repository — `repositories/ProductRepository.java`
 
-El repositorio se declara como **interface** que extiende `PanacheRepository`. Panache clásico
-no genera implementaciones de interfaces (inyectar solo la interface falla en build con
-`UnsatisfiedResolutionException`), así que se acompaña de una clase `@ApplicationScoped` vacía
-que la implementa. Las consultas personalizadas van como métodos `default` en la interface,
-y el service inyecta siempre la interface.
+El repositorio es **una sola clase** `@ApplicationScoped` que implementa `PanacheRepository`.
+No lleva interface aparte ni clase `Impl`: los métodos de Panache (`persist`, `findById`,
+`listAll`, `deleteById`, `count`…) ya vienen como `default` y Quarkus los completa en build.
+La clase existe solo para declarar el scope CDI (un bean tiene que ser una clase con anotación
+de scope). Las consultas personalizadas van como métodos públicos y el service inyecta la clase.
 
 ```java
 package {base}.repositories;
 
-import {base}.models.Product;
+import {base}.entities.Product;
 import io.quarkus.hibernate.orm.panache.PanacheRepository;
+import jakarta.enterprise.context.ApplicationScoped;
 
 import java.util.List;
 import java.util.Optional;
 
-public interface ProductRepository extends PanacheRepository<Product> {
+@ApplicationScoped
+public class ProductRepository implements PanacheRepository<Product> {
 
-    default Optional<Product> findByName(String name) {
+    public Optional<Product> findByName(String name) {
         return find("name", name).firstResultOptional();
     }
 
-    default List<Product> searchByName(String term) {
+    public List<Product> searchByName(String term) {
         return list("lower(name) like ?1", "%" + term.toLowerCase() + "%");
     }
-}
-```
-
-```java
-package {base}.repositories;
-
-import jakarta.enterprise.context.ApplicationScoped;
-
-@ApplicationScoped
-public class ProductRepositoryImpl implements ProductRepository {
 }
 ```
 
@@ -143,7 +135,7 @@ los campos editables (nunca `id` ni fechas de auditoría).
 ```java
 package {base}.mappers;
 
-import {base}.models.Product;
+import {base}.entities.Product;
 import {base}.models.dto.ProductDto;
 import jakarta.enterprise.context.ApplicationScoped;
 
@@ -176,16 +168,39 @@ public class ProductMapper {
 }
 ```
 
-## 5. Service — `services/ProductService.java`
+## 5. Service — `services/ProductService.java` + `ProductServiceImpl.java`
 
-Contiene la lógica de negocio, orquesta repositorios, maneja transacciones y convierte con el
-mapper. Recibe y devuelve DTO: las entidades nunca salen del service.
+El service se divide en una **interface** (el contrato de negocio, solo con DTO en las firmas)
+y una clase `@ApplicationScoped` `ProductServiceImpl` con la lógica: orquesta repositorios,
+maneja transacciones y convierte con el mapper. Las entidades nunca salen del service.
+Controllers y tests inyectan siempre la interface `ProductService`, nunca la `Impl`.
+
+```java
+package {base}.services;
+
+import {base}.models.dto.ProductDto;
+
+import java.util.List;
+
+public interface ProductService {
+
+    List<ProductDto> findAll();
+
+    ProductDto findById(Long id);
+
+    ProductDto create(ProductDto dto);
+
+    ProductDto update(Long id, ProductDto dto);
+
+    void delete(Long id);
+}
+```
 
 ```java
 package {base}.services;
 
 import {base}.mappers.ProductMapper;
-import {base}.models.Product;
+import {base}.entities.Product;
 import {base}.models.dto.ProductDto;
 import {base}.repositories.ProductRepository;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -195,24 +210,27 @@ import jakarta.ws.rs.NotFoundException;
 import java.util.List;
 
 @ApplicationScoped
-public class ProductService {
+public class ProductServiceImpl implements ProductService {
 
     private final ProductRepository repository;
     private final ProductMapper mapper;
 
-    public ProductService(ProductRepository repository, ProductMapper mapper) {
+    public ProductServiceImpl(ProductRepository repository, ProductMapper mapper) {
         this.repository = repository;
         this.mapper = mapper;
     }
 
+    @Override
     public List<ProductDto> findAll() {
         return repository.listAll().stream().map(mapper::toDto).toList();
     }
 
+    @Override
     public ProductDto findById(Long id) {
         return mapper.toDto(getOrThrow(id));
     }
 
+    @Override
     @Transactional
     public ProductDto create(ProductDto dto) {
         Product entity = mapper.toEntity(dto);
@@ -220,6 +238,7 @@ public class ProductService {
         return mapper.toDto(entity);
     }
 
+    @Override
     @Transactional
     public ProductDto update(Long id, ProductDto dto) {
         Product entity = getOrThrow(id);
@@ -227,6 +246,7 @@ public class ProductService {
         return mapper.toDto(entity);
     }
 
+    @Override
     @Transactional
     public void delete(Long id) {
         if (!repository.deleteById(id)) {
@@ -243,7 +263,8 @@ public class ProductService {
 
 ## 6. Controller — `controllers/ProductController.java`
 
-Solo expone endpoints REST: valida con `@Valid`, delega al service y devuelve DTO.
+Solo expone endpoints REST: valida con `@Valid`, delega al service (inyectando la
+interface `ProductService`) y devuelve DTO.
 Sin lógica de negocio ni acceso a repositorios. Anotaciones OpenAPI para Swagger UI.
 
 ```java
@@ -326,10 +347,12 @@ un `@ServerExceptionMapper` que devuelva un `record ErrorDto(int status, String 
 ## 8. Variante sin persistencia
 
 Si el proyecto aún no tiene persistencia y el usuario no la pidió:
-- `models/Product.java` es un POJO sin anotaciones JPA.
-- `repositories/ProductRepository.java` es una interface propia (`findAll`, `findById`, `save`,
-  `deleteById`) con una implementación `@ApplicationScoped` en memoria
-  (`ConcurrentHashMap<Long, Product>` + `AtomicLong` para ids).
-- El service no usa `@Transactional`. DTO, mapper y controller quedan igual.
+- `entities/Product.java` es un POJO sin anotaciones JPA.
+- `repositories/ProductRepository.java` es una sola clase `@ApplicationScoped` en memoria
+  (`ConcurrentHashMap<Long, Product>` + `AtomicLong` para ids), sin interface ni `Impl`. Usa
+  los mismos nombres de métodos que Panache (`listAll`, `findByIdOptional`, `persist`,
+  `deleteById`) para que el service no cambie al pasar a persistencia.
+- `ProductServiceImpl` no usa `@Transactional`. La interface del service, DTO, mapper y
+  controller quedan igual.
 
-Así, al agregar persistencia más adelante, solo cambian model y repository.
+Así, al agregar persistencia más adelante, solo cambian entity y repository.
