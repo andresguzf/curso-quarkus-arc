@@ -66,7 +66,8 @@ src/main/java/com/andres/course/claude/quarkus/{segmento}/app/
 ├── entities/        # entidades JPA
 ├── models/
 │   └── dto/         # records request/response
-└── mappers/         # conversión entity <-> dto
+├── mappers/         # conversión entity <-> dto
+└── exceptions/      # manejo global de errores (GlobalExceptionMapper)
 ```
 
 ## Flujo 2: agregar persistencia (solo bajo demanda)
@@ -95,7 +96,8 @@ si quiere agregar Panache + PostgreSQL o trabajar con un repositorio en memoria
 
 Lee `references/layer-templates.md` antes de escribir código: tiene la plantilla completa
 de cada capa. Para un recurso nuevo crea, en este orden: entity → repository → DTO → mapper
-→ service → controller. Al modificar un campo, propaga el cambio por todas las capas
+→ service → controller. Si el proyecto aún no tiene `exceptions/GlobalExceptionMapper` y
+`models/dto/ErrorDto`, créalos junto con el primer recurso. Al modificar un campo, propaga el cambio por todas las capas
 afectadas (entity, DTO, mapper y validaciones).
 
 Responsabilidades de cada capa (respétalas aunque el usuario pida "algo rápido": mezclar
@@ -103,13 +105,16 @@ capas es lo que hace que el proyecto deje de ser mantenible):
 
 - **controllers** — solo exponen endpoints REST (`@Path`, JAX-RS de Quarkus REST). Validan la
   entrada con `@Valid`, delegan al service y devuelven DTO. Nunca acceden a repositorios ni
-  devuelven entidades.
+  devuelven entidades. El body lleva `@Valid @NotNull(message = "...")` y se llama como el
+  recurso (`product`, `customer`), porque ese nombre aparece en el error si llega vacío.
 - **services** — interface `XxxService` con las operaciones (solo DTO en las firmas) más una
   clase `@ApplicationScoped` `XxxServiceImpl implements XxxService` con la lógica de negocio:
   orquesta repositorios, define `@Transactional` en las escrituras y convierte entre entidades
   y DTO usando el mapper. Controllers y tests inyectan siempre la interface, nunca la `Impl`.
   (A diferencia del repositorio, aquí la interface sí aporta: es el contrato de negocio y
-  desacopla al controller de la implementación concreta.)
+  desacopla al controller de la implementación concreta.) Los errores se lanzan como
+  `NotFoundException` (404) o `ClientErrorException` con `CONFLICT` (409), con un mensaje
+  simple para el usuario final ("No encontramos un producto con el id 5.").
 - **repositories** — una sola clase `@ApplicationScoped` `XxxRepository implements
   PanacheRepository<Entidad>`, con las consultas personalizadas como métodos públicos. Sin
   interface aparte ni clase `XxxRepositoryImpl`: los métodos de Panache (`persist`, `findById`,
@@ -122,7 +127,8 @@ capas es lo que hace que el proyecto deje de ser mantenible):
   solo tienen getter.
 - **models/dto** — `record`, un único DTO por recurso que sirve como request y response.
   Excluye password, `created_at`, `updated_at`, `create_at`, `update_at` (y sus variantes
-  camelCase) y cualquier dato sensible. Las anotaciones de Bean Validation van en el record.
+  camelCase) y cualquier dato sensible. Las anotaciones de Bean Validation van en el record,
+  cada una con su `message` en español simple ("El nombre es obligatorio").
   Mantén esta regla aunque el entity tenga un campo sensible que la API debería recibir
   (por ejemplo `password` en un usuario o cliente): no crees un DTO de entrada aparte. En su
   lugar, deja la columna nullable para que el alta funcione y avisa al usuario de forma
@@ -131,6 +137,11 @@ capas es lo que hace que el proyecto deje de ser mantenible):
 - **mappers** — clase `@ApplicationScoped` `XxxMapper` con `toDto(entity)` (entity → dto),
   `toEntity(dto)` (dto → entity) y `updateEntity(entity, dto)`. Conversión explícita, sin
   MapStruct ni reflexión, para que se vea qué campos viajan.
+- **exceptions** — `GlobalExceptionMapper` con un `@ServerExceptionMapper` por tipo de error.
+  Toda respuesta de error es un `ErrorDto` (`models/dto`) con `status`, `error`, `message`,
+  `path` y `timestamp`. En la validación (400) agrega `errors`: un mapa de cada campo que falló
+  a la lista de sus mensajes. Cubre validación (400), JSON mal formado (400), errores HTTP de
+  los services y de Quarkus (404, 405, 409…) y errores inesperados (500, detalle solo en el log).
 
 Usa inyección por constructor en services y controllers.
 
@@ -160,7 +171,7 @@ toques el resto del archivo.
 
 | Skill | Ubicación | Propósito |
 |---|---|---|
-| `quarkus-best-practices` | `.claude/skills/quarkus-best-practices/` | Genera el proyecto desde code.quarkus.io (Java 25, Maven, Quarkus LTS >= 3.40.1, jar) y crea o modifica sus capas: controllers, services (interface + Impl), repositories Panache, entities, DTO record y mappers. Agrega Panache + PostgreSQL bajo demanda (`add-persistence`). |
+| `quarkus-best-practices` | `.claude/skills/quarkus-best-practices/` | Genera el proyecto desde code.quarkus.io (Java 25, Maven, Quarkus LTS >= 3.40.1, jar) y crea o modifica sus capas: controllers, services (interface + Impl), repositories Panache, entities, DTO record, mappers y manejo global de errores (`GlobalExceptionMapper` + `ErrorDto`). Agrega Panache + PostgreSQL bajo demanda (`add-persistence`). |
 
 ## Skill trigger rules
 

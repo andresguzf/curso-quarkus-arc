@@ -24,6 +24,9 @@
         "Controller valida con @Valid, no usa repository ni entidades",
         "Service es interface + XxxServiceImpl @ApplicationScoped; el controller inyecta la interface",
         "Service usa el mapper",
+        "GlobalExceptionMapper en exceptions devuelve ErrorDto (status, error, message, path, timestamp) para 400, 404, 409 y 500",
+        "Validación responde errors como mapa campo -> lista de mensajes, con mensajes en español definidos en el DTO",
+        "El body del controller lleva @Valid @NotNull y se nombra como el recurso",
         "CLAUDE.md registra quarkus-best-practices en Available skills y Skill trigger rules, sin duplicar secciones",
         "Compila con ./mvnw package -DskipTests"
       ]
@@ -52,6 +55,9 @@
         "Controller valida con @Valid, no usa repository ni entidades",
         "Service es interface + XxxServiceImpl @ApplicationScoped; el controller inyecta la interface",
         "Service usa el mapper",
+        "GlobalExceptionMapper en exceptions devuelve ErrorDto (status, error, message, path, timestamp) para 400, 404, 409 y 500",
+        "Validación responde errors como mapa campo -> lista de mensajes, con mensajes en español definidos en el DTO",
+        "El body del controller lleva @Valid @NotNull y se nombra como el recurso",
         "CLAUDE.md registra quarkus-best-practices en Available skills y Skill trigger rules, sin duplicar secciones",
         "Compila con ./mvnw package -DskipTests"
       ]
@@ -72,6 +78,9 @@
         "Controller valida con @Valid, no usa repository ni entidades",
         "Service es interface + XxxServiceImpl @ApplicationScoped; el controller inyecta la interface",
         "Service usa el mapper",
+        "GlobalExceptionMapper en exceptions devuelve ErrorDto (status, error, message, path, timestamp) para 400, 404, 409 y 500",
+        "Validación responde errors como mapa campo -> lista de mensajes, con mensajes en español definidos en el DTO",
+        "El body del controller lleva @Valid @NotNull y se nombra como el recurso",
         "CLAUDE.md registra quarkus-best-practices en Available skills y Skill trigger rules, sin duplicar secciones",
         "Compila con ./mvnw package -DskipTests"
       ]
