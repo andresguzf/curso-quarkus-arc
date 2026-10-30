@@ -40,12 +40,27 @@ class InvoiceControllerTest {
     }
 
     @Test
-    void rutaInexistenteDevuelve404() {
-        // Sin quarkus-rest-servlet, Quarkus REST responde su 404 nativo a una ruta que no coincide con ningún @Path
+    void rutaInexistenteDevuelve404ConJson() {
+        // Quarkus REST lanza NotFoundException y la atiende GlobalExceptionMapper. No lleva elapsedTime:
+        // RequestTimeFilter no mide las peticiones que no llegan a ningún método
         given()
                 .when().get("/api/no-existe")
                 .then()
-                .statusCode(404);
+                .statusCode(404)
+                .contentType(ContentType.JSON)
+                .body("error", equalTo("Recurso no encontrado"))
+                .body("path", equalTo("/api/no-existe"));
+    }
+
+    @Test
+    void subrutaInexistenteDeUnControllerDevuelve404ConJson() {
+        // /api/invoices existe, pero /api/invoices/123 no
+        given()
+                .when().get("/api/invoices/123")
+                .then()
+                .statusCode(404)
+                .contentType(ContentType.JSON)
+                .body("path", equalTo("/api/invoices/123"));
     }
 
     @Test
@@ -67,7 +82,7 @@ class InvoiceControllerTest {
     }
 
     @Test
-    @Disabled("Requiere quarkus-rest-servlet (comentada en el pom): sin ella no hay HttpServletRequest ni sesión")
+    @Disabled("Requiere quarkus-undertow, quarkus-rest-servlet y LogoutController, hoy comentados")
     void logoutSinSesionNoFallaNiDestruyeLaFactura() {
         String before = given().when().get("/api/invoices").then().statusCode(200).extract().path("createdAt");
 

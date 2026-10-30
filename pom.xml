@@ -47,16 +47,20 @@
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-arc</artifactId>
         </dependency>
+        <!--
+            Descomentar ambas para el ejemplo de @SessionScoped y /api/logout (y descomentar LogoutController):
+            Undertow aporta el contexto de sesión y quarkus-rest-servlet hace que Quarkus REST atienda por
+            servlet, así ese contexto se activa. A cambio:
+            - Con Undertow, Quarkus REST no usa el handler de NotFoundException de GlobalExceptionMapper para
+              las rutas inexistentes: responde la página 404 de Vert.x (HTML), no el JSON.
+            - Con quarkus-rest-servlet, una ruta inexistente termina en 500 y los errores no manejados llegan
+              sin cuerpo.
+        -->
+        <!--
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-undertow</artifactId>
         </dependency>
-        <!--
-            Descomentar para el ejemplo de @SessionScoped y /api/logout: hace que Quarkus REST atienda por
-            servlet, así Undertow activa el contexto de sesión. A cambio, los errores dejan de mostrarse con
-            las páginas nativas de Quarkus (un 500 llega sin cuerpo y una ruta inexistente termina en 500).
-        -->
-        <!--
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-rest-servlet</artifactId>
