@@ -24,6 +24,7 @@
         "Controller valida con @Valid, no usa repository ni entidades",
         "Service es interface + XxxServiceImpl @ApplicationScoped; el controller inyecta la interface",
         "Service usa el mapper",
+        "CLAUDE.md registra quarkus-best-practices en Available skills y Skill trigger rules, sin duplicar secciones",
         "Compila con ./mvnw package -DskipTests"
       ]
     },
@@ -51,6 +52,7 @@
         "Controller valida con @Valid, no usa repository ni entidades",
         "Service es interface + XxxServiceImpl @ApplicationScoped; el controller inyecta la interface",
         "Service usa el mapper",
+        "CLAUDE.md registra quarkus-best-practices en Available skills y Skill trigger rules, sin duplicar secciones",
         "Compila con ./mvnw package -DskipTests"
       ]
     },
@@ -70,6 +72,7 @@
         "Controller valida con @Valid, no usa repository ni entidades",
         "Service es interface + XxxServiceImpl @ApplicationScoped; el controller inyecta la interface",
         "Service usa el mapper",
+        "CLAUDE.md registra quarkus-best-practices en Available skills y Skill trigger rules, sin duplicar secciones",
         "Compila con ./mvnw package -DskipTests"
       ]
     }

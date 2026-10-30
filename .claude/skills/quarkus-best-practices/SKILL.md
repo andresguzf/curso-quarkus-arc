@@ -47,7 +47,8 @@ número). Ejemplo: `2-quarkus-arc` → `quarkusarc` → `com.andres.course.claud
    `<packaging>quarkus</packaging>` a `jar` (agregando las executions del `quarkus-maven-plugin`,
    necesarias porque el lifecycle `jar` no las enlaza solo), asegura `quarkus-arc` explícito
    (code.quarkus.io no lo acepta como extensión seleccionable), escribe `application.properties`
-   y crea los packages base. No sobrescribe `CLAUDE.md`, `.claude/` ni archivos existentes.
+   y crea los packages base. No sobrescribe `CLAUDE.md`, `.claude/` ni archivos existentes
+   (el registro de la skill en `CLAUDE.md` se hace después, ver "Registro en CLAUDE.md").
 3. **No agregues persistencia** salvo que el usuario la haya pedido explícitamente en esa
    misma solicitud (base de datos, PostgreSQL, JPA, Hibernate, Panache, "persistir"...).
    El proyecto base debe quedar liviano; la persistencia se suma después con el Flujo 2.
@@ -145,6 +146,33 @@ Dev Mode habilita Live Coding y Hot Reload (los cambios se aplican en el siguien
 y la Dev UI en `http://localhost:8080/q/dev-ui`. Swagger UI queda en
 `http://localhost:8080/q/swagger-ui`. Prefiérelo sobre `java -jar` o `mvn` global; usa
 `./mvnw package` solo para construir el jar (`java -jar target/quarkus-app/quarkus-run.jar`).
+
+## Registro en CLAUDE.md
+
+Cada vez que uses esta skill en un proyecto, revisa el `CLAUDE.md` de la raíz. Si no tiene las
+secciones `## Available skills` y `## Skill trigger rules` con `quarkus-best-practices`,
+agrégalas al final con este contenido (crea el `CLAUDE.md` si no existe). Si ya están, no las
+dupliques: solo actualízalas si quedaron desalineadas con las convenciones de esta skill. No
+toques el resto del archivo.
+
+```markdown
+## Available skills
+
+| Skill | Ubicación | Propósito |
+|---|---|---|
+| `quarkus-best-practices` | `.claude/skills/quarkus-best-practices/` | Genera el proyecto desde code.quarkus.io (Java 25, Maven, Quarkus LTS >= 3.40.1, jar) y crea o modifica sus capas: controllers, services (interface + Impl), repositories Panache, entities, DTO record y mappers. Agrega Panache + PostgreSQL bajo demanda (`add-persistence`). |
+
+## Skill trigger rules
+
+- Usa `quarkus-best-practices` cuando el usuario pida crear una API básica, un microservicio o un proyecto con Quarkus.
+- Usa `quarkus-best-practices` cuando el usuario pida crear, agregar o modificar un entity, DTO, mapper, repository, service, controller o endpoint REST.
+- Usa `quarkus-best-practices` cuando el usuario pida agregar persistencia (Hibernate ORM Panache, PostgreSQL), por comando (`add-persistence`) o en lenguaje natural ("quiero agregar Panache con Postgres"). La persistencia solo se agrega bajo demanda.
+- Antes de escribir una capa, lee `references/layer-templates.md` del skill.
+- Para ejecutar la aplicación localmente usa siempre `./mvnw quarkus:dev`.
+```
+
+Si `.claude/skills/quarkus-best-practices` es un symlink, agrega bajo la tabla una línea que
+indique a dónde apunta y que los cambios al skill se hacen solo en esa fuente original.
 
 ## Al terminar
 
