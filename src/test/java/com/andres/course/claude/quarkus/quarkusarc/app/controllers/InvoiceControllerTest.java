@@ -3,6 +3,7 @@ package com.andres.course.claude.quarkus.quarkusarc.app.controllers;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import static io.restassured.RestAssured.given;
@@ -40,14 +41,11 @@ class InvoiceControllerTest {
 
     @Test
     void rutaInexistenteDevuelve404() {
-        // Sin NotFoundController, quarkus-rest-servlet responde 500 a una ruta que no coincide con ningún @Path
+        // Sin quarkus-rest-servlet, Quarkus REST responde su 404 nativo a una ruta que no coincide con ningún @Path
         given()
                 .when().get("/api/no-existe")
                 .then()
-                .statusCode(404)
-                .contentType(ContentType.JSON)
-                .body("path", equalTo("/api/no-existe"))
-                .body("elapsedTime", endsWith(" ms"));
+                .statusCode(404);
     }
 
     @Test
@@ -63,12 +61,13 @@ class InvoiceControllerTest {
     void showNoAbreSesionHttp() {
         Response response = given().when().get("/api/invoices");
 
-        // Con @ApplicationScoped nada usa la sesión, así que Undertow no la crea ni envía la cookie
+        // Con @ApplicationScoped nada usa la sesión, así que no se crea ni se envía la cookie
         response.then().statusCode(200);
         assertNull(response.getCookie(COOKIE));
     }
 
     @Test
+    @Disabled("Requiere quarkus-rest-servlet (comentada en el pom): sin ella no hay HttpServletRequest ni sesión")
     void logoutSinSesionNoFallaNiDestruyeLaFactura() {
         String before = given().when().get("/api/invoices").then().statusCode(200).extract().path("createdAt");
 

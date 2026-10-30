@@ -51,10 +51,17 @@
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-undertow</artifactId>
         </dependency>
+        <!--
+            Descomentar para el ejemplo de @SessionScoped y /api/logout: hace que Quarkus REST atienda por
+            servlet, así Undertow activa el contexto de sesión. A cambio, los errores dejan de mostrarse con
+            las páginas nativas de Quarkus (un 500 llega sin cuerpo y una ruta inexistente termina en 500).
+        -->
+        <!--
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-rest-servlet</artifactId>
         </dependency>
+        -->
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-junit</artifactId>

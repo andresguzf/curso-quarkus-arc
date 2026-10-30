@@ -10,6 +10,8 @@ import jakarta.ws.rs.core.MediaType;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -27,10 +29,15 @@ public class GreetingController {
     @GET
     @Path("/hello")
     @Operation(summary = "Devuelve un saludo")
-    public Map<String, String> hello(@QueryParam("name") @DefaultValue("Mundo") String name) {
+    public Map<String, Object> hello(@QueryParam("name") @DefaultValue("Mundo") String name,
+                                     @QueryParam("divisor") @DefaultValue("10") BigDecimal divisor) {
+        // BigDecimal con 4 decimales; con divisor=0 lanza ArithmeticException (un double daría Infinity),
+        // que atiende GlobalExceptionMapper
+        BigDecimal result = BigDecimal.TEN.divide(divisor, 4, RoundingMode.HALF_UP);
         return Map.of(
                 "message", "Hola, %s! Bienvenido al curso de Quarkus".formatted(name),
-                "name", name);
+                "name", name,
+                "result", result);
     }
 
     // Excluido de RequestTimeFilter: no se mide en el log ni lleva elapsedTime

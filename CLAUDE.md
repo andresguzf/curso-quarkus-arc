@@ -18,10 +18,12 @@ Es un proyecto didáctico, así que no sigue la arquitectura completa de la skil
 
 - Java 25, Maven (`./mvnw`), Quarkus 3.40.1.1 (LTS), packaging `jar`.
 - `quarkus-rest-jackson` (Quarkus REST), `quarkus-arc`, `quarkus-hibernate-validator` y `quarkus-smallrye-openapi` (Swagger UI).
-- `quarkus-undertow` y `quarkus-rest-servlet` son necesarias para `@SessionScoped`:
-  - Undertow aporta el contexto de sesión.
+- `quarkus-undertow` y `quarkus-rest-servlet` son necesarias para `@SessionScoped`. Hoy `quarkus-rest-servlet` está **comentada** en el `pom.xml` para priorizar las páginas de error nativas de Quarkus:
+  - Undertow aporta el contexto de sesión, pero solo lo activa en las peticiones que pasan por el servlet.
   - `quarkus-rest-servlet` hace que Quarkus REST atienda por servlet, para que ese contexto se active.
-  - Sin ellas, un bean `@SessionScoped` lanza `ContextNotActiveException`.
+  - Sin ella, un bean `@SessionScoped` lanza `ContextNotActiveException` y `LogoutController` falla (no hay `HttpServletRequest` activo).
+  - Con ella, Undertow responde los 500 sin cuerpo y una ruta inexistente termina en 500 (un `NullPointerException` interno) en vez de 404.
+  - Para el ejemplo de sesión: descomenta la dependencia, quita el `@Disabled` del test de logout en `InvoiceControllerTest` y cambia `Invoice` a `@SessionScoped`.
   - También permiten inyectar `HttpServletRequest` en `LogoutController`.
 - Tests: `quarkus-junit` y `rest-assured`.
 
@@ -29,13 +31,17 @@ Es un proyecto didáctico, así que no sigue la arquitectura completa de la skil
 
 Package base: `com.andres.course.claude.quarkus.quarkusarc.app`.
 
-- `controllers/`: `InvoiceController`, `LogoutController`, `HealthController`, `GreetingController` y `NotFoundController`.
-  - `NotFoundController` (`@Path("/{path: .*}")`) responde 404 a las rutas sin endpoint. Es necesario porque con `quarkus-rest-servlet` una ruta que no coincide con ningún `@Path` termina en un `NullPointerException` interno (500). No lo quites mientras se use `quarkus-rest-servlet`.
+- `controllers/`: `InvoiceController`, `LogoutController`, `HealthController` y `GreetingController`.
+  - `GreetingController.hello()` divide 10 por el query param `divisor` (`BigDecimal`, por defecto `10`) y devuelve el saludo con `result` redondeado a 4 decimales. Con `divisor=0` lanza `ArithmeticException`, que atiende `GlobalExceptionMapper`.
 - `models/`:
   - `Invoice` (`@ApplicationScoped`; se puede cambiar a `@SessionScoped` para el ejemplo de sesión).
   - `Customer` (`@ApplicationScoped`).
   - `Item`.
-- `config/`: `ItemsProducer`, `InvoiceItemsConfig` y los qualifiers `ItemsJson` e `ItemsFile`.
+- `config/`: `ItemsProducer`, `InvoiceItemsConfig`, los qualifiers `ItemsJson` e `ItemsFile` y `JacksonConfig`.
+  - `JacksonConfig` (`ObjectMapperCustomizer`) desactiva `STRIP_TRAILING_BIGDECIMAL_ZEROES`: sin eso, `RequestTimeFilter` (que usa `valueToTree`) les quita los ceros finales a los `BigDecimal` (`1.0000` → `1`).
+- `exceptions/`: `GlobalExceptionMapper`, manejo global de excepciones con un método `@ServerExceptionMapper` por tipo.
+  - `handleArithmeticException` responde 500 con un JSON (`error`, `message`, `path`) en lenguaje simple.
+  - Las excepciones sin método propio muestran la página de error nativa de Quarkus.
 - `filters/`: `RequestTimeFilter` y la anotación `SkipRequestTime`.
   - `RequestTimeFilter` es un filtro global de Quarkus REST. `@ServerRequestFilter` (pre) guarda el inicio y `@ServerResponseFilter` (post) escribe en el log el método, la ruta, el status y los ms, y agrega `elapsedTime` al JSON de respuesta convirtiendo la entidad a `ObjectNode` con el `ObjectMapper` (solo si la respuesta es un objeto JSON).
   - El filtro de request no es `preMatching`: necesita `ResourceInfo` para saber si el endpoint tiene `@SkipRequestTime`. Por eso no mide las peticiones que no llegan a ningún método (por ejemplo, un 405).
@@ -47,11 +53,11 @@ Package base: `com.andres.course.claude.quarkus.quarkusarc.app`.
 | Método | Ruta | Descripción |
 |---|---|---|
 | GET | `/api/invoices` | Devuelve la factura con su cliente e ítems (los inyectados con `@ItemsFile`) |
-| POST | `/api/logout` | Invalida la sesión HTTP; con `Invoice` en `@SessionScoped` dispara su `@PreDestroy` |
+| POST | `/api/logout` | Invalida la sesión HTTP; con `Invoice` en `@SessionScoped` dispara su `@PreDestroy` (requiere `quarkus-rest-servlet`) |
 | GET | `/api/health` | Estado de la aplicación (excluido de `RequestTimeFilter`) |
-| GET | `/api/greetings/hello?name=...` | Saludo en JSON (`name` por defecto: `Mundo`) |
+| GET | `/api/greetings/hello?name=...&divisor=...` | Saludo en JSON con `result` = 10 / `divisor` con 4 decimales (`name` por defecto `Mundo`, `divisor` por defecto `10`); con `divisor=0` responde 500 con un JSON que explica el error |
 | GET | `/api/greetings/date` | Fecha y hora actual del servidor en JSON (excluido de `RequestTimeFilter`) |
-| * | cualquier otra ruta | 404 con JSON (`NotFoundController`) |
+| * | cualquier otra ruta | 404 nativo de Quarkus REST |
 | GET | `/q/swagger-ui` | Swagger UI |
 | GET | `/q/openapi` | Documento OpenAPI |
 | GET | `/q/dev-ui` | Dev UI (solo en dev mode) |
