@@ -1,6 +1,6 @@
 ---
 name: quarkus-best-practices
-description: Genera y mantiene proyectos Quarkus (Java 25, Maven, Quarkus LTS >= 3.40.1) con arquitectura en capas controllers / services / repositories / entities, DTO como records y Mapper explícito. Usa esta skill siempre que el usuario pida crear una API básica, un microservicio o un proyecto con Quarkus, y también cuando pida crear, agregar o modificar un entity, model, DTO, mapper, repository, service, controller o endpoint REST en un proyecto Quarkus, o agregar persistencia a uno (por ejemplo "quiero agregar Panache con Postgres", "conecta la API a PostgreSQL"), aunque no mencione la skill por nombre.
+description: Genera y mantiene proyectos Quarkus (Java 25, Maven, Quarkus LTS >= 3.40.1) con arquitectura en capas controllers / services / repositories / entities, DTO como records y Mapper explícito. Usa esta skill siempre que el usuario pida crear una API básica, un microservicio o un proyecto con Quarkus, y también cuando pida crear, agregar o modificar un entity, model, DTO, mapper, repository, service, controller o endpoint REST en un proyecto Quarkus, o agregar persistencia o seguridad a uno (por ejemplo "quiero agregar Panache con Postgres", "conecta la API a PostgreSQL", "agrega login con JWT", "protege la API con roles user y admin"), aunque no mencione la skill por nombre.
 ---
 
 # Quarkus best practices
@@ -25,6 +25,7 @@ separación de responsabilidades, para que cualquier cambio posterior sea predec
 | Package base | `com.andres.course.claude.quarkus.{segmento}.app` |
 | Extensiones base | `quarkus-rest-jackson`, `quarkus-arc`, `quarkus-hibernate-validator`, `quarkus-smallrye-openapi` |
 | Persistencia (bajo demanda) | `quarkus-hibernate-orm-panache`, `quarkus-jdbc-postgresql` |
+| Seguridad (bajo demanda) | `quarkus-smallrye-jwt`, `quarkus-smallrye-jwt-build`, `quarkus-elytron-security-common`, `quarkus-rest-csrf` |
 
 `{segmento}` es el artifactId convertido en un segmento de package válido: minúsculas, sin
 guiones ni símbolos y sin dígitos iniciales (Java no permite que un segmento empiece con
@@ -67,7 +68,8 @@ src/main/java/com/andres/course/claude/quarkus/{segmento}/app/
 ├── models/
 │   └── dto/         # records request/response
 ├── mappers/         # conversión entity <-> dto
-└── exceptions/      # manejo global de errores (GlobalExceptionMapper)
+├── exceptions/      # manejo global de errores (GlobalExceptionMapper)
+└── security/        # solo con seguridad (Flujo 4): bcrypt, JWT y admin inicial
 ```
 
 ## Flujo 2: agregar persistencia (solo bajo demanda)
@@ -133,7 +135,9 @@ capas es lo que hace que el proyecto deje de ser mantenible):
   (por ejemplo `password` en un usuario o cliente): no crees un DTO de entrada aparte. En su
   lugar, deja la columna nullable para que el alta funcione y avisa al usuario de forma
   explícita en el resumen final que ese campo no se puede enviar por la API con el DTO actual,
-  para que decida cómo manejarlo.
+  para que decida cómo manejarlo. Excepción: el password del usuario que inicia sesión
+  (Flujo 4) va en su DTO como campo de solo escritura (`@JsonProperty(access = WRITE_ONLY)`),
+  se guarda como hash bcrypt y nunca aparece en una respuesta.
 - **mappers** — clase `@ApplicationScoped` `XxxMapper` con `toDto(entity)` (entity → dto),
   `toEntity(dto)` (dto → entity) y `updateEntity(entity, dto)`. Conversión explícita, sin
   MapStruct ni reflexión, para que se vea qué campos viajan.
@@ -144,6 +148,35 @@ capas es lo que hace que el proyecto deje de ser mantenible):
   los services y de Quarkus (404, 405, 409…) y errores inesperados (500, detalle solo en el log).
 
 Usa inyección por constructor en services y controllers.
+
+## Flujo 4: agregar seguridad (solo bajo demanda)
+
+Se activa cuando el usuario pide autenticación, login, usuarios, roles, JWT o CSRF (por ejemplo
+"agrega login con JWT", "protege la API con roles", "add-security"). Requiere persistencia: si el
+proyecto no la tiene, agrégala antes con el Flujo 2 (pregúntale al usuario si no la pidió).
+
+1. Ejecuta:
+   ```bash
+   python3 .claude/skills/quarkus-best-practices/scripts/generate_project.py add-security
+   ```
+   Agrega las extensiones de seguridad y `quarkus-test-security`, anexa a `application.properties`
+   la configuración de JWT en cookie HttpOnly, CSRF y admin inicial, y crea el package `security`.
+2. Lee `references/security-templates.md` y escribe, en este orden: `Role` y `User` → `UserRepository`
+   → `UserDto`/`LoginDto` → `UserMapper` → `security/` (`PasswordHasher`, `TokenService`,
+   `AdminSeeder`) → `UserService` + `Impl` → `AuthController` y `UserController` → handlers 401/403 y
+   `EmptyErrorResponseFilter` → `@RolesAllowed` en los controllers existentes → tests.
+3. Agrega `ADMIN_EMAIL` y un `ADMIN_PASSWORD` aleatorio al `.env` (y placeholders en `.env.example`).
+   Nunca muestres el password en el chat: indica que está en el `.env`.
+
+Reglas del patrón (detalle y código en `references/security-templates.md`):
+- Roles `user` (solo lectura) y `admin` (CRUD completo, incluidos los usuarios), un rol por usuario.
+- JWT firmado por Quarkus en la cookie `access_token`: `HttpOnly`, `SameSite=Strict`, `Secure` en prod.
+- CSRF double submit: `GET /api/auth/csrf` entrega la cookie; todo POST/PUT/DELETE (también login y
+  registro) envía su valor en `X-CSRF-TOKEN`. Deja `require-form-url-encoded` en `true` (por defecto):
+  con `false`, un JSON sin la cabecera se salta la verificación.
+- `deny-unannotated-endpoints=true`: cada endpoint lleva `@PermitAll`, `@Authenticated` o `@RolesAllowed`.
+- Registro público siempre con rol `user`; el primer admin lo crea `AdminSeeder`. Login fallido: el
+  mismo 401 exista o no el email.
 
 ## Ejecutar la aplicación
 
@@ -171,14 +204,15 @@ toques el resto del archivo.
 
 | Skill | Ubicación | Propósito |
 |---|---|---|
-| `quarkus-best-practices` | `.claude/skills/quarkus-best-practices/` | Genera el proyecto desde code.quarkus.io (Java 25, Maven, Quarkus LTS >= 3.40.1, jar) y crea o modifica sus capas: controllers, services (interface + Impl), repositories Panache, entities, DTO record, mappers y manejo global de errores (`GlobalExceptionMapper` + `ErrorDto`). Agrega Panache + PostgreSQL bajo demanda (`add-persistence`). |
+| `quarkus-best-practices` | `.claude/skills/quarkus-best-practices/` | Genera el proyecto desde code.quarkus.io (Java 25, Maven, Quarkus LTS >= 3.40.1, jar) y crea o modifica sus capas: controllers, services (interface + Impl), repositories Panache, entities, DTO record, mappers y manejo global de errores (`GlobalExceptionMapper` + `ErrorDto`). Agrega bajo demanda Panache + PostgreSQL (`add-persistence`) y seguridad con JWT en cookie HttpOnly, roles y CSRF (`add-security`). |
 
 ## Skill trigger rules
 
 - Usa `quarkus-best-practices` cuando el usuario pida crear una API básica, un microservicio o un proyecto con Quarkus.
 - Usa `quarkus-best-practices` cuando el usuario pida crear, agregar o modificar un entity, DTO, mapper, repository, service, controller o endpoint REST.
 - Usa `quarkus-best-practices` cuando el usuario pida agregar persistencia (Hibernate ORM Panache, PostgreSQL), por comando (`add-persistence`) o en lenguaje natural ("quiero agregar Panache con Postgres"). La persistencia solo se agrega bajo demanda.
-- Antes de escribir una capa, lee `references/layer-templates.md` del skill.
+- Usa `quarkus-best-practices` cuando el usuario pida agregar seguridad (login, usuarios, roles, JWT, CSRF), por comando (`add-security`) o en lenguaje natural ("protege la API con roles user y admin"). La seguridad solo se agrega bajo demanda.
+- Antes de escribir una capa, lee `references/layer-templates.md` del skill (y `references/security-templates.md` para la seguridad).
 - Para ejecutar la aplicación localmente usa siempre `./mvnw quarkus:dev`.
 ```
 

@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Genera un proyecto Quarkus desde code.quarkus.io o le agrega persistencia bajo demanda.
+"""Genera un proyecto Quarkus desde code.quarkus.io o le agrega persistencia y seguridad bajo demanda.
 
 Uso:
     python3 generate_project.py [--dir <workspace>] [--min-version 3.40.1] [--dry-run]
     python3 generate_project.py add-persistence [--dir <workspace>]
+    python3 generate_project.py add-security [--dir <workspace>]
 
 Qué hace:
   1. Consulta https://code.quarkus.io/api/streams y elige el stream LTS FINAL más
@@ -19,6 +20,12 @@ Qué hace:
 `add-persistence` agrega quarkus-hibernate-orm-panache y quarkus-jdbc-postgresql al pom
 (vía ./mvnw quarkus:add-extension) y anexa la configuración de datasource/Hibernate
 a application.properties. Es idempotente.
+
+`add-security` (requiere persistencia) agrega smallrye-jwt, smallrye-jwt-build,
+elytron-security-common (bcrypt) y rest-csrf, más quarkus-test-security en test; anexa la
+configuración de JWT en cookie HttpOnly, CSRF y admin inicial, y crea el package security.
+El código Java (User, Role, AuthController...) lo escribe Claude desde references/security-templates.md.
+Es idempotente.
 """
 import argparse
 import io
@@ -44,6 +51,13 @@ EXTENSIONS = [
 ]
 # Solo bajo demanda (subcomando add-persistence).
 PERSISTENCE_EXTENSIONS = ["io.quarkus:quarkus-hibernate-orm-panache", "io.quarkus:quarkus-jdbc-postgresql"]
+# Solo bajo demanda (subcomando add-security).
+SECURITY_EXTENSIONS = [
+    "io.quarkus:quarkus-smallrye-jwt",
+    "io.quarkus:quarkus-smallrye-jwt-build",
+    "io.quarkus:quarkus-elytron-security-common",
+    "io.quarkus:quarkus-rest-csrf",
+]
 BASE_PACKAGES = ["controllers", "services", "repositories", "entities", "models/dto", "mappers", "exceptions"]
 
 
@@ -249,6 +263,83 @@ def add_persistence(target):
     print("Persistencia lista: Hibernate ORM Panache + PostgreSQL (Dev Services en dev mode).")
 
 
+SECURITY_PROPERTIES = """
+# ===== Seguridad: JWT en cookie HttpOnly =====
+# smallrye-jwt lee el token de la cookie access_token en vez de la cabecera Authorization
+mp.jwt.token.header=Cookie
+mp.jwt.token.cookie=access_token
+mp.jwt.verify.issuer={issuer}
+smallrye.jwt.new-token.issuer={issuer}
+app.auth.token-duration=1H
+# Secure: la cookie solo viaja por HTTPS. En dev y test se usa http
+app.auth.cookie-secure=true
+%dev.app.auth.cookie-secure=false
+%test.app.auth.cookie-secure=false
+# Claves RSA: en dev y test Quarkus genera un par en memoria (los tokens dejan de valer al reiniciar);
+# en prod se leen de archivos PEM
+%prod.smallrye.jwt.sign.key.location=${{JWT_PRIVATE_KEY_LOCATION}}
+%prod.mp.jwt.verify.publickey.location=${{JWT_PUBLIC_KEY_LOCATION}}
+# Admin inicial: se crea al arrancar si no existe ningún admin (los tests crean sus propios usuarios)
+app.auth.admin.email=${{ADMIN_EMAIL:}}
+app.auth.admin.password=${{ADMIN_PASSWORD:}}
+%test.app.auth.admin.email=
+%test.app.auth.admin.password=
+# La autenticación se resuelve al llegar al endpoint, así los 401 pasan por GlobalExceptionMapper
+quarkus.http.auth.proactive=false
+# Todo endpoint sin @PermitAll, @Authenticated o @RolesAllowed queda cerrado
+quarkus.security.jaxrs.deny-unannotated-endpoints=true
+
+# ===== CSRF (quarkus-rest-csrf, double submit cookie) =====
+# GET /api/auth/csrf entrega la cookie csrf-token; POST, PUT y DELETE deben repetir su valor en la
+# cabecera X-CSRF-TOKEN. La cookie no es HttpOnly porque el frontend tiene que leerla para enviarla.
+# require-form-url-encoded queda en true (valor por defecto): un JSON sin la cabecera se rechaza con 400.
+# No ponerlo en false: con false, un JSON sin cabecera se salta la verificación
+quarkus.rest-csrf.create-token-path=/api/auth/csrf
+quarkus.rest-csrf.token-header-name=X-CSRF-TOKEN
+quarkus.rest-csrf.cookie-http-only=false
+%prod.quarkus.rest-csrf.cookie-force-secure=true
+"""
+
+TEST_SECURITY_DEPENDENCY = """        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-test-security</artifactId>
+            <scope>test</scope>
+        </dependency>
+"""
+
+
+def add_security(target):
+    pom_path = os.path.join(target, "pom.xml")
+    if not os.path.exists(pom_path):
+        sys.exit("No existe pom.xml: genera primero el proyecto.")
+    pom = open(pom_path, encoding="utf-8").read()
+    if "<artifactId>quarkus-hibernate-orm-panache</artifactId>" not in pom:
+        sys.exit("La seguridad guarda los usuarios en la base de datos: ejecuta primero add-persistence.")
+    missing = [e for e in SECURITY_EXTENSIONS if f"<artifactId>{e.split(':')[1]}</artifactId>" not in pom]
+    if missing:
+        subprocess.run(["./mvnw", "-q", "-B", "quarkus:add-extension", f"-Dextensions={','.join(missing)}"],
+                       cwd=target, check=True)
+    else:
+        print("  - extensiones de seguridad ya presentes en el pom")
+    pom = open(pom_path, encoding="utf-8").read()
+    if "<artifactId>quarkus-test-security</artifactId>" not in pom:
+        pom = pom.replace("    </dependencies>", TEST_SECURITY_DEPENDENCY + "    </dependencies>", 1)
+        with open(pom_path, "w", encoding="utf-8") as f:
+            f.write(pom)
+    props_path = os.path.join(target, "src/main/resources/application.properties")
+    props = open(props_path, encoding="utf-8").read() if os.path.exists(props_path) else ""
+    if "mp.jwt.token.cookie" in props:
+        print("  - application.properties ya tiene la seguridad configurada")
+    else:
+        with open(props_path, "a", encoding="utf-8") as f:
+            f.write(SECURITY_PROPERTIES.format(issuer=package_segment(os.path.basename(target))))
+    segment = package_segment(os.path.basename(target))
+    security_dir = os.path.join(target, "src/main/java", *f"{GROUP_ID}.{segment}.app".split("."), "security")
+    os.makedirs(security_dir, exist_ok=True)
+    print("Seguridad lista: JWT en cookie HttpOnly, roles y CSRF. Falta escribir el código desde "
+          "references/security-templates.md y agregar ADMIN_EMAIL/ADMIN_PASSWORD al .env.")
+
+
 def create_packages(target, base_package):
     root = os.path.join(target, "src/main/java", *base_package.split("."))
     for pkg in BASE_PACKAGES:
@@ -262,7 +353,7 @@ def create_packages(target, base_package):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("command", nargs="?", choices=["generate", "add-persistence"], default="generate")
+    ap.add_argument("command", nargs="?", choices=["generate", "add-persistence", "add-security"], default="generate")
     ap.add_argument("--dir", default=os.getcwd(), help="Directorio workspace (su nombre es el artifactId)")
     ap.add_argument("--min-version", default="3.40.1")
     ap.add_argument("--dry-run", action="store_true", help="Solo muestra lo que haría")
@@ -271,6 +362,9 @@ def main():
     target = os.path.abspath(args.dir)
     if args.command == "add-persistence":
         add_persistence(target)
+        return
+    if args.command == "add-security":
+        add_security(target)
         return
     artifact_id = os.path.basename(target)
     segment = package_segment(artifact_id)

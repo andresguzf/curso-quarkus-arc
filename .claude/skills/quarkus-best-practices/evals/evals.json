@@ -84,6 +84,28 @@
         "CLAUDE.md registra quarkus-best-practices en Available skills y Skill trigger rules, sin duplicar secciones",
         "Compila con ./mvnw package -DskipTests"
       ]
+    },
+    {
+      "id": 4,
+      "prompt": "En mi proyecto Quarkus con Panache y Postgres agrega seguridad: usuarios con email y password bcrypt, roles user y admin, login con JWT en cookie HttpOnly y protección CSRF. El user solo puede consultar clientes; el admin administra clientes y usuarios.",
+      "expected_output": "Ejecuta add-security y escribe desde security-templates.md: User/Role, UserRepository, UserDto con password WRITE_ONLY, UserMapper, security/ (PasswordHasher, TokenService, AdminSeeder), UserService + Impl, AuthController, UserController, 401/403 y CSRF en ErrorDto, @RolesAllowed en los controllers y tests; compila y los tests pasan.",
+      "files": [
+        "inputs/ventas-api"
+      ],
+      "assertions": [
+        "pom con quarkus-smallrye-jwt, quarkus-smallrye-jwt-build, quarkus-elytron-security-common, quarkus-rest-csrf y quarkus-test-security",
+        "application.properties lee el JWT de la cookie (mp.jwt.token.header=Cookie, mp.jwt.token.cookie=access_token)",
+        "deny-unannotated-endpoints=true y quarkus.http.auth.proactive=false",
+        "CSRF con cabecera X-CSRF-TOKEN y require-form-url-encoded sin poner en false",
+        "Entity User en tabla users con password hash bcrypt, Role enum y auditoría",
+        "UserDto único con password @JsonProperty WRITE_ONLY; el password nunca aparece en respuestas",
+        "Login devuelve cookie access_token HttpOnly y SameSite=Strict",
+        "Registro público siempre crea rol user; AdminSeeder crea el admin inicial desde ADMIN_EMAIL/ADMIN_PASSWORD",
+        "user solo GET en clientes (403 al escribir); admin CRUD de clientes y /api/users",
+        "401 y 403 y el rechazo CSRF responden ErrorDto",
+        "ADMIN_PASSWORD queda solo en .env (no en el chat ni en archivos versionados)",
+        "Compila y ./mvnw test pasa"
+      ]
     }
   ]
 }
